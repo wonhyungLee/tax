@@ -46,6 +46,29 @@ const setStatus = (el, message, isError = false) => {
   el.style.color = isError ? '#9b2c1f' : '#6c7a90';
 };
 
+const parseResponse = async (response) => {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      return await response.json();
+    } catch (error) {
+      return {};
+    }
+  }
+  const text = await response.text();
+  if (!text) return {};
+  if (text.trim().startsWith('<')) {
+    return { message: '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' };
+  }
+  return { message: text };
+};
+
+const getErrorMessage = (response, data, fallback) => {
+  if (data?.message) return data.message;
+  if (fallback) return fallback;
+  return `요청에 실패했습니다. (${response.status})`;
+};
+
 const renderPostList = () => {
   if (!postList) return;
   if (!posts.length) {
@@ -111,8 +134,9 @@ const fetchPosts = async ({ reset = false } = {}) => {
       hasMore = true;
     }
     const response = await fetch(`/api/posts?offset=${offset}&limit=10`);
-    if (!response.ok) throw new Error('게시글을 불러오지 못했습니다.');
-    const data = await response.json();
+    const data = await parseResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(response, data, '게시글을 불러오지 못했습니다.'));
+    if (!Array.isArray(data.posts)) throw new Error('게시글 응답이 올바르지 않습니다.');
     const incoming = data.posts || [];
     if (reset) {
       posts = incoming;
@@ -138,8 +162,8 @@ const fetchPostDetail = async (id) => {
   if (!id) return;
   try {
     const response = await fetch(`/api/posts/${id}`);
-    if (!response.ok) throw new Error('게시글을 불러오지 못했습니다.');
-    const data = await response.json();
+    const data = await parseResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(response, data, '게시글을 불러오지 못했습니다.'));
     selectedPost = data.post;
     renderPostList();
     renderPostDetail(selectedPost);
@@ -165,8 +189,8 @@ const submitPost = async (event) => {
         password: postPassword.value.trim(),
       }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || '등록에 실패했습니다.');
+    const data = await parseResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(response, data, '등록에 실패했습니다.'));
     setStatus(postFormStatus, '등록 완료');
     postTitle.value = '';
     postContent.value = '';
@@ -180,7 +204,7 @@ const submitPost = async (event) => {
   }
 };
 
-const editPost = () => {
+const editPost = async () => {
   if (!selectedPost) {
     setStatus(postFormStatus, '수정할 게시글을 선택하세요.', true);
     return;
@@ -192,24 +216,23 @@ const editPost = () => {
   const password = prompt('비밀번호를 입력하세요.');
   if (!password) return;
 
-  fetch(`/api/posts/${selectedPost.id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: newTitle.trim(), content: newContent.trim(), password: password.trim() }),
-  })
-    .then(async (response) => {
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '수정 실패');
-      selectedPost = data.post;
-      renderPostList();
-      renderPostDetail(selectedPost);
-    })
-    .catch((error) => {
-      setStatus(postFormStatus, error.message, true);
+  try {
+    const response = await fetch(`/api/posts/${selectedPost.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle.trim(), content: newContent.trim(), password: password.trim() }),
     });
+    const data = await parseResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(response, data, '수정 실패'));
+    selectedPost = data.post;
+    renderPostList();
+    renderPostDetail(selectedPost);
+  } catch (error) {
+    setStatus(postFormStatus, error.message, true);
+  }
 };
 
-const deletePost = () => {
+const deletePost = async () => {
   if (!selectedPost) {
     setStatus(postFormStatus, '삭제할 게시글을 선택하세요.', true);
     return;
@@ -218,21 +241,20 @@ const deletePost = () => {
   if (!password) return;
   if (!confirm('정말 삭제하시겠습니까?')) return;
 
-  fetch(`/api/posts/${selectedPost.id}`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: password.trim() }),
-  })
-    .then(async (response) => {
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '삭제 실패');
-      selectedPost = null;
-      await fetchPosts({ reset: true });
-      renderPostDetail(null);
-    })
-    .catch((error) => {
-      setStatus(postFormStatus, error.message, true);
+  try {
+    const response = await fetch(`/api/posts/${selectedPost.id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password.trim() }),
     });
+    const data = await parseResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(response, data, '삭제 실패'));
+    selectedPost = null;
+    await fetchPosts({ reset: true });
+    renderPostDetail(null);
+  } catch (error) {
+    setStatus(postFormStatus, error.message, true);
+  }
 };
 
 const submitComment = async (event) => {
@@ -255,8 +277,8 @@ const submitComment = async (event) => {
         password: commentPassword.value.trim(),
       }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || '댓글 등록 실패');
+    const data = await parseResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(response, data, '댓글 등록 실패'));
     commentContent.value = '';
     commentPassword.value = '';
     setStatus(commentStatus, '댓글 등록 완료');
@@ -268,7 +290,7 @@ const submitComment = async (event) => {
   }
 };
 
-const editComment = (id) => {
+const editComment = async (id) => {
   if (!selectedPost) return;
   const target = selectedPost.comments.find((comment) => comment.id === id);
   if (!target) return;
@@ -277,40 +299,42 @@ const editComment = (id) => {
   const password = prompt('비밀번호를 입력하세요.');
   if (!password) return;
 
-  fetch(`/api/comments/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: newContent.trim(), password: password.trim() }),
-  })
-    .then(async (response) => {
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '댓글 수정 실패');
-      selectedPost = data.post;
-      renderPostList();
-      renderPostDetail(selectedPost);
-    })
-    .catch((error) => setStatus(commentStatus, error.message, true));
+  try {
+    const response = await fetch(`/api/comments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: newContent.trim(), password: password.trim() }),
+    });
+    const data = await parseResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(response, data, '댓글 수정 실패'));
+    selectedPost = data.post;
+    renderPostList();
+    renderPostDetail(selectedPost);
+  } catch (error) {
+    setStatus(commentStatus, error.message, true);
+  }
 };
 
-const deleteComment = (id) => {
+const deleteComment = async (id) => {
   if (!selectedPost) return;
   const password = prompt('비밀번호를 입력하세요.');
   if (!password) return;
   if (!confirm('댓글을 삭제하시겠습니까?')) return;
 
-  fetch(`/api/comments/${id}`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: password.trim() }),
-  })
-    .then(async (response) => {
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '댓글 삭제 실패');
-      selectedPost = data.post;
-      renderPostList();
-      renderPostDetail(selectedPost);
-    })
-    .catch((error) => setStatus(commentStatus, error.message, true));
+  try {
+    const response = await fetch(`/api/comments/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password.trim() }),
+    });
+    const data = await parseResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(response, data, '댓글 삭제 실패'));
+    selectedPost = data.post;
+    renderPostList();
+    renderPostDetail(selectedPost);
+  } catch (error) {
+    setStatus(commentStatus, error.message, true);
+  }
 };
 
 postList.addEventListener('click', (event) => {

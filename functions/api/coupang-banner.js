@@ -31,10 +31,10 @@ const toHex = (buffer) =>
 const getCoupangDate = () => {
   const now = new Date();
   const pad = (num) => String(num).padStart(2, '0');
-  return (
-    `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}` +
-    `T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`
-  );
+  const year = String(now.getUTCFullYear()).slice(-2);
+  return `${year}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(
+    now.getUTCHours()
+  )}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
 };
 
 const signRequest = async (secretKey, message) => {
@@ -55,24 +55,27 @@ const fetchCoupangProducts = async (env, keyword) => {
   const subId = env.COUPANG_SUB_ID || 'tax-preview';
 
   const path = '/v2/providers/affiliate_open_api/apis/openapi/v1/products/search';
-  const query = `?keyword=${encodeURIComponent(keyword)}&limit=3&subId=${encodeURIComponent(subId)}`;
+  const query = `keyword=${encodeURIComponent(keyword)}&limit=3&subId=${encodeURIComponent(subId)}`;
   const datetime = getCoupangDate();
   const message = `${datetime}GET${path}${query}`;
   const signature = await signRequest(secretKey, message);
-  const authorization = `CEA ${accessKey}:${signature}`;
+  const authorization = `CEA algorithm=HmacSHA256, access-key=${accessKey}, signed-date=${datetime}, signature=${signature}`;
 
-  const response = await fetch(`https://api-gateway.coupang.com${path}${query}`, {
+  const response = await fetch(`https://api-gateway.coupang.com${path}?${query}`, {
     headers: {
       Authorization: authorization,
-      'X-EXTENDED-HEADER': datetime,
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Coupang API error: ${response.status}`);
+    const text = await response.text();
+    throw new Error(`Coupang API error: ${response.status} ${text}`.trim());
   }
 
   const data = await response.json();
+  if (data?.rCode && data.rCode !== '0') {
+    throw new Error(data.rMessage || 'Coupang API error');
+  }
   const products = data?.data?.productData || [];
   return products.map((product) => ({
     title: product.productName,
@@ -91,35 +94,40 @@ const getTopCategory = async (env) => {
 };
 
 export async function onRequest({ request, env }) {
-  if (!env.DB) {
-    return jsonResponse({ message: 'DB 설정이 필요합니다.' }, 500);
-  }
-
-  if (request.method !== 'GET') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
-
-  const category = await getTopCategory(env);
-  const cacheKey = `banner:${category}`;
-  if (env.APP_KV) {
-    const cached = await env.APP_KV.get(cacheKey, 'json');
-    if (cached?.items) {
-      return jsonResponse(cached);
-    }
-  }
-
-  let items = [];
   try {
-    const keyword = pickKeyword(category);
-    items = await fetchCoupangProducts(env, keyword);
+    if (!env.DB) {
+      return jsonResponse({ message: 'DB 설정이 필요합니다.' }, 500);
+    }
+
+    if (request.method !== 'GET') {
+      return jsonResponse({ message: 'Method Not Allowed' }, 405);
+    }
+
+    const category = await getTopCategory(env);
+    const cacheKey = `banner:${category}`;
+    if (env.APP_KV) {
+      const cached = await env.APP_KV.get(cacheKey, 'json');
+      if (cached?.items?.length) {
+        return jsonResponse(cached);
+      }
+    }
+
+    let items = [];
+    try {
+      const keyword = pickKeyword(category);
+      items = await fetchCoupangProducts(env, keyword);
+    } catch (error) {
+      items = [];
+    }
+
+    const payload = { category, items };
+    if (env.APP_KV) {
+      const ttl = items.length ? 1800 : 120;
+      await env.APP_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: ttl });
+    }
+
+    return jsonResponse(payload);
   } catch (error) {
-    items = [];
+    return jsonResponse({ message: '배너를 불러오지 못했습니다.' }, 500);
   }
-
-  const payload = { category, items };
-  if (env.APP_KV) {
-    await env.APP_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: 1800 });
-  }
-
-  return jsonResponse(payload);
 }
