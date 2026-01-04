@@ -1,0 +1,125 @@
+import { jsonResponse, requireEnv } from '../_lib/utils.js';
+
+const encoder = new TextEncoder();
+
+const CATEGORY_KEYWORDS = {
+  card: ['카드지갑', '가계부', '영수증 정리'],
+  insurance: ['서류 정리함', '파일 박스', '라벨기'],
+  health: ['건강기록', '영양제', '헬스 케어'],
+  education: ['스터디 플래너', '노트', '필기구'],
+  housing: ['정리함', '수납 박스', '라벨기'],
+  pension: ['재테크', '가계부', '가계 플래너'],
+  donation: ['기부', '달력', '다이어리'],
+  finance: ['가계부', '계산기', '서류 정리함'],
+};
+
+const pickKeyword = (category) => {
+  const pool = CATEGORY_KEYWORDS[category] || CATEGORY_KEYWORDS.finance;
+  return pool[Math.floor(Math.random() * pool.length)] || '가계부';
+};
+
+const formatPrice = (value) => {
+  if (!Number.isFinite(value)) return '';
+  return `${value.toLocaleString('ko-KR')}원`;
+};
+
+const toHex = (buffer) =>
+  Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+const getCoupangDate = () => {
+  const now = new Date();
+  const pad = (num) => String(num).padStart(2, '0');
+  return (
+    `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}` +
+    `T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`
+  );
+};
+
+const signRequest = async (secretKey, message) => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secretKey),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+  return toHex(signature);
+};
+
+const fetchCoupangProducts = async (env, keyword) => {
+  const accessKey = requireEnv(env, 'COUPANG_ACCESS_KEY');
+  const secretKey = requireEnv(env, 'COUPANG_SECRET_KEY');
+  const subId = env.COUPANG_SUB_ID || 'tax-preview';
+
+  const path = '/v2/providers/affiliate_open_api/apis/openapi/v1/products/search';
+  const query = `?keyword=${encodeURIComponent(keyword)}&limit=3&subId=${encodeURIComponent(subId)}`;
+  const datetime = getCoupangDate();
+  const message = `${datetime}GET${path}${query}`;
+  const signature = await signRequest(secretKey, message);
+  const authorization = `CEA ${accessKey}:${signature}`;
+
+  const response = await fetch(`https://api-gateway.coupang.com${path}${query}`, {
+    headers: {
+      Authorization: authorization,
+      'X-EXTENDED-HEADER': datetime,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Coupang API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const products = data?.data?.productData || [];
+  return products.map((product) => ({
+    title: product.productName,
+    image: product.productImage,
+    link: product.productUrl,
+    price: formatPrice(product.productPrice),
+    meta: product.categoryName || product.sellerName || '',
+  }));
+};
+
+const getTopCategory = async (env) => {
+  const row = await env.DB.prepare(
+    'SELECT category FROM ad_interest ORDER BY count DESC, updated_at DESC LIMIT 1'
+  ).first();
+  return row?.category || 'finance';
+};
+
+export async function onRequest({ request, env }) {
+  if (!env.DB) {
+    return jsonResponse({ message: 'DB 설정이 필요합니다.' }, 500);
+  }
+
+  if (request.method !== 'GET') {
+    return new Response('Method Not Allowed', { status: 405 });
+  }
+
+  const category = await getTopCategory(env);
+  const cacheKey = `banner:${category}`;
+  if (env.APP_KV) {
+    const cached = await env.APP_KV.get(cacheKey, 'json');
+    if (cached?.items) {
+      return jsonResponse(cached);
+    }
+  }
+
+  let items = [];
+  try {
+    const keyword = pickKeyword(category);
+    items = await fetchCoupangProducts(env, keyword);
+  } catch (error) {
+    items = [];
+  }
+
+  const payload = { category, items };
+  if (env.APP_KV) {
+    await env.APP_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: 1800 });
+  }
+
+  return jsonResponse(payload);
+}

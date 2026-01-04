@@ -1,0 +1,8 @@
+# Secrets
+쿠팡파트너스api정보.txt
+.dev.vars
+.env
+.env.*
+
+# System
+.DS_Store

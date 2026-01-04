@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <base href="/" />
+  <title>익명 게시판 · 2025 연말정산</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <div class="brand">
+        <span class="brand-mark">2025</span>
+        <span class="brand-title">연말정산 권장 사용액</span>
+      </div>
+      <nav class="nav">
+        <a href="/">홈</a>
+        <a href="/#calculator">권장 사용액</a>
+        <a href="/#inputs">입력 항목</a>
+        <a href="/board/">익명 게시판</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section" id="board">
+      <div class="container">
+        <div class="section-head">
+          <h2>익명 게시판</h2>
+          <p>총급여·공제 입력을 기반으로 예상 환급/추납 경험과 질문을 나눠보세요. 개인정보는 입력하지 마세요.</p>
+        </div>
+        <div class="board-grid">
+          <div class="board-panel">
+            <div class="panel-head">
+              <h3>글 작성</h3>
+              <p class="mini">비밀번호로만 수정/삭제됩니다. 분실 시 복구가 불가합니다.</p>
+            </div>
+            <form id="post-form" class="board-form">
+              <label>
+                제목
+                <input type="text" id="post-title" maxlength="80" required placeholder="예: 연봉 6천 환급 예상 공유" />
+              </label>
+              <label>
+                내용
+                <textarea id="post-content" rows="6" required placeholder="예: 총급여 6천~7천, 부양가족 2, 카드 2천, 예상 +30만"></textarea>
+              </label>
+              <label>
+                비밀번호
+                <input type="password" id="post-password" minlength="4" maxlength="20" required placeholder="수정/삭제용" />
+              </label>
+              <button type="submit" class="btn primary">게시하기</button>
+              <p class="mini" id="post-form-status"></p>
+            </form>
+          </div>
+
+          <div class="board-panel">
+            <div class="panel-head">
+              <h3>게시글 목록</h3>
+              <div class="inline-actions">
+                <button type="button" class="btn ghost" id="refresh-posts">새로고침</button>
+              </div>
+            </div>
+            <div class="post-list" id="post-list">
+              <div class="list-empty">게시글을 불러오는 중입니다.</div>
+            </div>
+            <button type="button" class="btn ghost full" id="load-more">더 보기</button>
+          </div>
+        </div>
+
+        <div class="board-detail" id="post-detail">
+          <div class="panel-head">
+            <h3>게시글</h3>
+            <div class="inline-actions">
+              <button type="button" class="btn ghost" id="post-edit">수정</button>
+              <button type="button" class="btn danger" id="post-delete">삭제</button>
+            </div>
+          </div>
+          <div class="post-body" id="post-body">
+            <p class="mini">게시글을 선택하면 내용이 표시됩니다.</p>
+          </div>
+
+          <div class="comment-section">
+            <div class="panel-head">
+              <h4>댓글</h4>
+            </div>
+            <div class="comment-list" id="comment-list"></div>
+            <form id="comment-form" class="board-form">
+              <label>
+                댓글 내용
+                <textarea id="comment-content" rows="3" required placeholder="질문이나 의견을 남겨주세요."></textarea>
+              </label>
+              <label>
+                비밀번호
+                <input type="password" id="comment-password" minlength="4" maxlength="20" required placeholder="댓글 수정/삭제용" />
+              </label>
+              <button type="submit" class="btn primary">댓글 등록</button>
+              <p class="mini" id="comment-form-status"></p>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/board.js"></script>
+</body>
+</html>
