@@ -360,13 +360,17 @@ a {
   background: #fff;
 }
 
-.ad-grid {
+.promo-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
 }
 
-.ad-card {
+.promo-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.promo-card {
   display: flex;
   gap: 14px;
   align-items: center;
@@ -377,7 +381,12 @@ a {
   box-shadow: 0 10px 30px rgba(27, 42, 65, 0.08);
 }
 
-.ad-card img {
+.promo-grid.compact .promo-card {
+  padding: 12px;
+  gap: 12px;
+}
+
+.promo-card img {
   width: 92px;
   height: 92px;
   border-radius: 14px;
@@ -385,47 +394,57 @@ a {
   border: 1px solid rgba(27, 42, 65, 0.12);
 }
 
-.ad-info {
+.promo-grid.compact .promo-card img {
+  width: 72px;
+  height: 72px;
+}
+
+.promo-info {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.ad-title {
+.promo-title {
   font-size: 0.95rem;
   font-weight: 600;
 }
 
-.ad-meta {
+.promo-meta {
   font-size: 0.8rem;
   color: #6c7a90;
 }
 
-.ad-price {
+.promo-price {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--accent);
 }
 
-.ad-card.skeleton {
+.promo-card.skeleton {
   gap: 12px;
   align-items: center;
 }
 
-.ad-card.skeleton .ad-thumb {
+.promo-card.skeleton .promo-thumb {
   width: 92px;
   height: 92px;
   border-radius: 14px;
   background: linear-gradient(120deg, rgba(27, 42, 65, 0.08), rgba(27, 42, 65, 0.02));
 }
 
-.ad-card.skeleton .ad-lines {
+.promo-grid.compact .promo-card.skeleton .promo-thumb {
+  width: 72px;
+  height: 72px;
+}
+
+.promo-card.skeleton .promo-lines {
   flex: 1;
   display: grid;
   gap: 10px;
 }
 
-.ad-card.skeleton .ad-lines span {
+.promo-card.skeleton .promo-lines span {
   height: 12px;
   border-radius: 999px;
   background: linear-gradient(120deg, rgba(27, 42, 65, 0.08), rgba(27, 42, 65, 0.02));

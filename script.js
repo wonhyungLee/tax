@@ -11,7 +11,7 @@ const shareButton = document.getElementById('share-result');
 const shareOutput = document.getElementById('share-output');
 const shareLink = document.getElementById('share-link');
 const shareCopy = document.getElementById('share-copy');
-const affiliateBanner = document.getElementById('affiliate-banner');
+const bannerSlots = Array.from(document.querySelectorAll('[data-banner-slot]'));
 
 let latestResults = null;
 
@@ -376,16 +376,19 @@ const recordInterest = async (category) => {
   }
 };
 
-const renderAffiliateBanner = (items) => {
-  if (!affiliateBanner) return;
-  affiliateBanner.innerHTML = '';
-  if (!items || !items.length) {
-    affiliateBanner.innerHTML = '<div class="mini">추천 상품을 불러오지 못했습니다.</div>';
+const renderBannerSlot = (slot, items) => {
+  if (!slot) return;
+  slot.innerHTML = '';
+  const maxItems = parseInt(slot.dataset.bannerCount || '3', 10);
+  const visibleItems = items.slice(0, maxItems);
+  if (!visibleItems.length) {
+    slot.innerHTML = '<div class="mini">추천 상품을 불러오지 못했습니다.</div>';
     return;
   }
-  items.forEach((item) => {
+
+  visibleItems.forEach((item) => {
     const card = document.createElement('a');
-    card.className = 'ad-card';
+    card.className = 'promo-card';
     card.href = item.link;
     card.target = '_blank';
     card.rel = 'noopener noreferrer';
@@ -396,34 +399,39 @@ const renderAffiliateBanner = (items) => {
     card.appendChild(img);
 
     const info = document.createElement('div');
-    info.className = 'ad-info';
+    info.className = 'promo-info';
 
     const title = document.createElement('div');
-    title.className = 'ad-title';
+    title.className = 'promo-title';
     title.textContent = item.title;
     info.appendChild(title);
 
     if (item.price) {
       const price = document.createElement('div');
-      price.className = 'ad-price';
+      price.className = 'promo-price';
       price.textContent = item.price;
       info.appendChild(price);
     }
 
     if (item.meta) {
       const meta = document.createElement('div');
-      meta.className = 'ad-meta';
+      meta.className = 'promo-meta';
       meta.textContent = item.meta;
       info.appendChild(meta);
     }
 
     card.appendChild(info);
-    affiliateBanner.appendChild(card);
+    slot.appendChild(card);
   });
 };
 
+const renderAffiliateBanner = (items) => {
+  if (!bannerSlots.length) return;
+  bannerSlots.forEach((slot) => renderBannerSlot(slot, items));
+};
+
 const loadAffiliateBanner = async () => {
-  if (!affiliateBanner) return;
+  if (!bannerSlots.length) return;
   try {
     const response = await fetch('/api/coupang-banner');
     if (!response.ok) throw new Error('invalid response');
