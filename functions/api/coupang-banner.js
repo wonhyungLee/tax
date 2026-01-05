@@ -1,4 +1,5 @@
 import { jsonResponse, requireEnv } from '../_lib/utils.js';
+import { ensureBoardSchema } from '../_lib/schema.js';
 
 const encoder = new TextEncoder();
 
@@ -87,6 +88,11 @@ const fetchCoupangProducts = async (env, keyword) => {
 };
 
 const getTopCategory = async (env) => {
+  try {
+    await ensureBoardSchema(env.DB);
+  } catch (error) {
+    return 'finance';
+  }
   const row = await env.DB.prepare(
     'SELECT category FROM ad_interest ORDER BY count DESC, updated_at DESC LIMIT 1'
   ).first();

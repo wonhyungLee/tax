@@ -1,6 +1,7 @@
 import { jsonResponse, parseJson, hashPassword, getIpHash, checkRateLimit } from '../../../_lib/utils.js';
 import { containsForbiddenContent } from '../../../_lib/filter.js';
 import { MAX_CONTENT, validateText, getPostWithComments } from '../../../_lib/board.js';
+import { ensureBoardSchema } from '../../../_lib/schema.js';
 
 const COMMENT_COOLDOWN_SECONDS = 6;
 
@@ -16,6 +17,12 @@ export async function onRequest({ request, env, params }) {
 
     const id = params.id;
     if (!id) return jsonResponse({ message: '게시글 ID가 필요합니다.' }, 400);
+
+    try {
+      await ensureBoardSchema(env.DB);
+    } catch (error) {
+      return jsonResponse({ message: '게시판 DB 스키마가 최신이 아닙니다. schema.sql을 다시 적용해 주세요.' }, 500);
+    }
 
     const body = await parseJson(request);
     if (!body) return jsonResponse({ message: '잘못된 요청입니다.' }, 400);

@@ -1,4 +1,5 @@
 import { jsonResponse, parseJson } from '../_lib/utils.js';
+import { ensureBoardSchema } from '../_lib/schema.js';
 
 const VALID_CATEGORIES = new Set([
   'card',
@@ -18,6 +19,12 @@ export async function onRequest({ request, env }) {
 
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
+  }
+
+  try {
+    await ensureBoardSchema(env.DB);
+  } catch (error) {
+    return jsonResponse({ message: '게시판 DB 스키마가 최신이 아닙니다. schema.sql을 다시 적용해 주세요.' }, 500);
   }
 
   const body = await parseJson(request);

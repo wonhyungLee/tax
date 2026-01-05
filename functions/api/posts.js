@@ -1,30 +1,11 @@
 import { jsonResponse, parseJson, hashPassword, getIpHash, checkRateLimit } from '../_lib/utils.js';
+import { ensureBoardSchema } from '../_lib/schema.js';
 import { containsForbiddenContent } from '../_lib/filter.js';
 import { MAX_TITLE, MAX_CONTENT, validateText } from '../_lib/board.js';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 const POST_COOLDOWN_SECONDS = 10;
-const REQUIRED_POST_COLUMNS = ['id', 'title', 'content', 'created_at', 'updated_at', 'password_hash'];
-
-const ensurePostsSchema = async (db) => {
-  try {
-    const info = await db.prepare('PRAGMA table_info(posts)').all();
-    const columns = new Set((info.results || []).map((row) => row.name));
-    if (!columns.size) {
-      return { ok: false, message: '게시판 DB 스키마가 없습니다. schema.sql을 적용해 주세요.' };
-    }
-    const missing = REQUIRED_POST_COLUMNS.filter((col) => !columns.has(col));
-    if (missing.length) {
-      return {
-        ok: false,
-        message: `게시판 DB 스키마가 최신이 아닙니다. 누락: ${missing.join(', ')}`,
-      };
-    }
-    return { ok: true };
-  } catch (error) {
-    return { ok: false, message: '게시판 DB 스키마 확인에 실패했습니다. schema.sql을 다시 적용해 주세요.' };
-  }
-};
+const SCHEMA_ERROR_MESSAGE = '게시판 DB 스키마가 최신이 아닙니다. schema.sql을 다시 적용해 주세요.';
 
 export async function onRequest({ request, env }) {
   try {
@@ -33,6 +14,11 @@ export async function onRequest({ request, env }) {
     }
 
     if (request.method === 'GET') {
+      try {
+        await ensureBoardSchema(env.DB);
+      } catch (error) {
+        return jsonResponse({ message: SCHEMA_ERROR_MESSAGE }, 500);
+      }
       const url = new URL(request.url);
       const limit = clamp(parseInt(url.searchParams.get('limit') || '10', 10), 1, 20);
       const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10));
@@ -62,6 +48,11 @@ export async function onRequest({ request, env }) {
     }
 
     if (request.method === 'POST') {
+      try {
+        await ensureBoardSchema(env.DB);
+      } catch (error) {
+        return jsonResponse({ message: SCHEMA_ERROR_MESSAGE }, 500);
+      }
       const body = await parseJson(request);
       if (!body) return jsonResponse({ message: '잘못된 요청입니다.' }, 400);
 
@@ -75,11 +66,6 @@ export async function onRequest({ request, env }) {
 
       if (containsForbiddenContent(`${title} ${content}`)) {
         return jsonResponse({ message: '금칙어가 포함되어 등록할 수 없습니다.' }, 400);
-      }
-
-      const schemaStatus = await ensurePostsSchema(env.DB);
-      if (!schemaStatus.ok) {
-        return jsonResponse({ message: schemaStatus.message }, 500);
       }
 
       const ipHash = await getIpHash(request, env.IP_PEPPER || '');
@@ -116,10 +102,6 @@ export async function onRequest({ request, env }) {
 
     return jsonResponse({ message: 'Method Not Allowed' }, 405);
   } catch (error) {
-    const message = error instanceof Error ? error.message : '';
-    if (message.includes('no such table') || message.includes('no such column')) {
-      return jsonResponse({ message: '게시판 DB 스키마가 최신이 아닙니다. schema.sql을 다시 적용해 주세요.' }, 500);
-    }
     return jsonResponse({ message: '서버 오류가 발생했습니다.' }, 500);
   }
 }
