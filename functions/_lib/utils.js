@@ -52,9 +52,15 @@ const MIN_KV_TTL_SECONDS = 60;
 export const checkRateLimit = async (env, key, ttlSeconds) => {
   if (!env.APP_KV) return true;
   const existing = await env.APP_KV.get(key);
-  if (existing) return false;
+  const now = Date.now();
+  if (existing) {
+    const last = Number.parseInt(existing, 10);
+    if (Number.isFinite(last) && ttlSeconds > 0 && now - last < ttlSeconds * 1000) {
+      return false;
+    }
+  }
   const ttl = Math.max(ttlSeconds || 0, MIN_KV_TTL_SECONDS);
-  await env.APP_KV.put(key, '1', { expirationTtl: ttl });
+  await env.APP_KV.put(key, String(now), { expirationTtl: ttl });
   return true;
 };
 
