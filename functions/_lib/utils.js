@@ -47,11 +47,14 @@ export const getIpHash = async (request, pepper = '') => {
   return hashText(`${ip}:${pepper}`);
 };
 
+const MIN_KV_TTL_SECONDS = 60;
+
 export const checkRateLimit = async (env, key, ttlSeconds) => {
   if (!env.APP_KV) return true;
   const existing = await env.APP_KV.get(key);
   if (existing) return false;
-  await env.APP_KV.put(key, '1', { expirationTtl: ttlSeconds });
+  const ttl = Math.max(ttlSeconds || 0, MIN_KV_TTL_SECONDS);
+  await env.APP_KV.put(key, '1', { expirationTtl: ttl });
   return true;
 };
 
