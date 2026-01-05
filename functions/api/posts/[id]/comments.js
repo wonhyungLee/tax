@@ -2,6 +2,7 @@ import { jsonResponse, parseJson, hashPassword, getIpHash, checkRateLimit } from
 import { containsForbiddenContent } from '../../../_lib/filter.js';
 import { MAX_CONTENT, validateText, getPostWithComments } from '../../../_lib/board.js';
 import { ensureBoardSchema } from '../../../_lib/schema.js';
+import { getApiErrorMessage } from '../../../_lib/errors.js';
 
 const COMMENT_COOLDOWN_SECONDS = 6;
 
@@ -60,6 +61,6 @@ export async function onRequest({ request, env, params }) {
     const updated = await getPostWithComments(env.DB, id);
     return jsonResponse({ post: updated }, 201);
   } catch (error) {
-    return jsonResponse({ message: '서버 오류가 발생했습니다.' }, 500);
+    return jsonResponse({ message: getApiErrorMessage(error, request) }, 500);
   }
 }

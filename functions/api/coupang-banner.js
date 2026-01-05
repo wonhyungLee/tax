@@ -1,5 +1,6 @@
 import { jsonResponse, requireEnv } from '../_lib/utils.js';
 import { ensureBoardSchema } from '../_lib/schema.js';
+import { getApiErrorMessage } from '../_lib/errors.js';
 
 const encoder = new TextEncoder();
 
@@ -134,6 +135,6 @@ export async function onRequest({ request, env }) {
 
     return jsonResponse(payload);
   } catch (error) {
-    return jsonResponse({ message: '배너를 불러오지 못했습니다.' }, 500);
+    return jsonResponse({ message: getApiErrorMessage(error, request) }, 500);
   }
 }

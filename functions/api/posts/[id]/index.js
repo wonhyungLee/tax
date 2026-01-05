@@ -2,6 +2,7 @@ import { jsonResponse, parseJson, hashPassword } from '../../../_lib/utils.js';
 import { containsForbiddenContent } from '../../../_lib/filter.js';
 import { MAX_TITLE, MAX_CONTENT, validateText, getPostWithComments } from '../../../_lib/board.js';
 import { ensureBoardSchema } from '../../../_lib/schema.js';
+import { getApiErrorMessage } from '../../../_lib/errors.js';
 
 export async function onRequest({ request, env, params }) {
   try {
@@ -84,6 +85,6 @@ export async function onRequest({ request, env, params }) {
 
     return jsonResponse({ message: 'Method Not Allowed' }, 405);
   } catch (error) {
-    return jsonResponse({ message: '서버 오류가 발생했습니다.' }, 500);
+    return jsonResponse({ message: getApiErrorMessage(error, request) }, 500);
   }
 }
