@@ -20,6 +20,8 @@ const pickKeyword = (category) => {
   return pool[Math.floor(Math.random() * pool.length)] || '가계부';
 };
 
+const MIN_PRICE = 500_000; // 50만원 이상 가전/고가 제품만 노출
+
 const formatPrice = (value) => {
   if (!Number.isFinite(value)) return '';
   return `${value.toLocaleString('ko-KR')}원`;
@@ -79,7 +81,14 @@ const fetchCoupangProducts = async (env, keyword) => {
     throw new Error(data.rMessage || 'Coupang API error');
   }
   const products = data?.data?.productData || [];
-  return products.map((product) => ({
+  const filtered = products.filter((product) => {
+    const price = Number(product.productPrice) || 0;
+    return price >= MIN_PRICE;
+  });
+
+  const chosen = filtered.length ? filtered : products;
+
+  return chosen.map((product) => ({
     title: product.productName,
     image: product.productImage,
     link: product.productUrl,
