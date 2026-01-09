@@ -11,7 +11,11 @@ const shareButton = document.getElementById('share-result');
 const shareOutput = document.getElementById('share-output');
 const shareLink = document.getElementById('share-link');
 const shareCopy = document.getElementById('share-copy');
-const bannerSlots = Array.from(document.querySelectorAll('[data-banner-slot]'));
+const affiliateBanner = document.getElementById('affiliate-banner');
+const affiliateSubtitle = document.querySelector('#affiliate .section-head p');
+const defaultAffiliateSubtitle =
+  (affiliateSubtitle && affiliateSubtitle.textContent) ||
+  '입력 항목과 관심 로그를 반영해 필요한 상품을 추천합니다.';
 
 let latestResults = null;
 
@@ -376,19 +380,23 @@ const recordInterest = async (category) => {
   }
 };
 
-const renderBannerSlot = (slot, items) => {
-  if (!slot) return;
-  slot.innerHTML = '';
-  const maxItems = parseInt(slot.dataset.bannerCount || '3', 10);
-  const visibleItems = items.slice(0, maxItems);
-  if (!visibleItems.length) {
-    slot.innerHTML = '<div class="mini">추천 상품을 불러오지 못했습니다.</div>';
+const updateAffiliateSubtitle = (meta) => {
+  if (!affiliateSubtitle) return;
+  const tagline = meta?.tagline || (meta?.title ? `이번주 테마 · ${meta.title}` : '');
+  affiliateSubtitle.textContent = tagline || defaultAffiliateSubtitle;
+};
+
+const renderAffiliateBanner = (items, meta = {}) => {
+  if (!affiliateBanner) return;
+  affiliateBanner.innerHTML = '';
+  updateAffiliateSubtitle(meta);
+  if (!items || !items.length) {
+    affiliateBanner.innerHTML = '<div class="mini">추천 상품을 불러오지 못했습니다.</div>';
     return;
   }
-
-  visibleItems.forEach((item) => {
+  items.forEach((item) => {
     const card = document.createElement('a');
-    card.className = 'promo-card';
+    card.className = 'ad-card';
     card.href = item.link;
     card.target = '_blank';
     card.rel = 'noopener noreferrer';
@@ -399,46 +407,71 @@ const renderBannerSlot = (slot, items) => {
     card.appendChild(img);
 
     const info = document.createElement('div');
-    info.className = 'promo-info';
+    info.className = 'ad-info';
+
+    const tags = document.createElement('div');
+    tags.className = 'ad-tags';
+    const badgeLabel = item.badge || meta.title;
+    if (badgeLabel) {
+      const badge = document.createElement('span');
+      badge.className = 'ad-badge';
+      badge.textContent = badgeLabel;
+      tags.appendChild(badge);
+    }
+    if (item.discountRate) {
+      const discount = document.createElement('span');
+      discount.className = 'ad-pill';
+      discount.textContent = `${item.discountRate}%↓`;
+      tags.appendChild(discount);
+    }
+    if (item.shippingTag) {
+      const ship = document.createElement('span');
+      ship.className = 'ad-pill soft';
+      ship.textContent = item.shippingTag;
+      tags.appendChild(ship);
+    }
+    if (tags.children.length) {
+      info.appendChild(tags);
+    }
 
     const title = document.createElement('div');
-    title.className = 'promo-title';
+    title.className = 'ad-title';
     title.textContent = item.title;
     info.appendChild(title);
 
     if (item.price) {
       const price = document.createElement('div');
-      price.className = 'promo-price';
+      price.className = 'ad-price';
       price.textContent = item.price;
       info.appendChild(price);
     }
 
     if (item.meta) {
-      const meta = document.createElement('div');
-      meta.className = 'promo-meta';
-      meta.textContent = item.meta;
-      info.appendChild(meta);
+      const metaEl = document.createElement('div');
+      metaEl.className = 'ad-meta';
+      metaEl.textContent = item.meta;
+      info.appendChild(metaEl);
     }
 
+    const cta = document.createElement('div');
+    cta.className = 'ad-cta';
+    cta.textContent = item.cta || meta.cta || '바로 보기';
+    info.appendChild(cta);
+
     card.appendChild(info);
-    slot.appendChild(card);
+    affiliateBanner.appendChild(card);
   });
 };
 
-const renderAffiliateBanner = (items) => {
-  if (!bannerSlots.length) return;
-  bannerSlots.forEach((slot) => renderBannerSlot(slot, items));
-};
-
 const loadAffiliateBanner = async () => {
-  if (!bannerSlots.length) return;
+  if (!affiliateBanner) return;
   try {
     const response = await fetch('/api/coupang-banner');
     if (!response.ok) throw new Error('invalid response');
     const payload = await response.json();
-    renderAffiliateBanner(payload.items || []);
+    renderAffiliateBanner(payload.items || [], payload.theme || {});
   } catch (error) {
-    renderAffiliateBanner([]);
+    renderAffiliateBanner([], {});
   }
 };
 

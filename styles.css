@@ -360,17 +360,13 @@ a {
   background: #fff;
 }
 
-.promo-grid {
+.ad-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
 }
 
-.promo-grid.compact {
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-}
-
-.promo-card {
+.ad-card {
   display: flex;
   gap: 14px;
   align-items: center;
@@ -381,12 +377,7 @@ a {
   box-shadow: 0 10px 30px rgba(27, 42, 65, 0.08);
 }
 
-.promo-grid.compact .promo-card {
-  padding: 12px;
-  gap: 12px;
-}
-
-.promo-card img {
+.ad-card img {
   width: 92px;
   height: 92px;
   border-radius: 14px;
@@ -394,57 +385,95 @@ a {
   border: 1px solid rgba(27, 42, 65, 0.12);
 }
 
-.promo-grid.compact .promo-card img {
-  width: 72px;
-  height: 72px;
-}
-
-.promo-info {
+.ad-info {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.promo-title {
+.ad-title {
   font-size: 0.95rem;
   font-weight: 600;
 }
 
-.promo-meta {
+.ad-meta {
   font-size: 0.8rem;
   color: #6c7a90;
 }
 
-.promo-price {
+.ad-price {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--accent);
 }
 
-.promo-card.skeleton {
+.ad-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ad-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #1e4ad7;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ad-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fff3ec;
+  color: #d05b0f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ad-pill.soft {
+  background: #eef7ff;
+  color: #1b6ad7;
+}
+
+.ad-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.ad-cta::after {
+  content: '→';
+  font-size: 0.85em;
+}
+
+.ad-card.skeleton {
   gap: 12px;
   align-items: center;
 }
 
-.promo-card.skeleton .promo-thumb {
+.ad-card.skeleton .ad-thumb {
   width: 92px;
   height: 92px;
   border-radius: 14px;
   background: linear-gradient(120deg, rgba(27, 42, 65, 0.08), rgba(27, 42, 65, 0.02));
 }
 
-.promo-grid.compact .promo-card.skeleton .promo-thumb {
-  width: 72px;
-  height: 72px;
-}
-
-.promo-card.skeleton .promo-lines {
+.ad-card.skeleton .ad-lines {
   flex: 1;
   display: grid;
   gap: 10px;
 }
 
-.promo-card.skeleton .promo-lines span {
+.ad-card.skeleton .ad-lines span {
   height: 12px;
   border-radius: 999px;
   background: linear-gradient(120deg, rgba(27, 42, 65, 0.08), rgba(27, 42, 65, 0.02));
